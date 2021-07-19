@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const {Room, validate} = require('./room');
+const Room = require('./room');
 const Joi = require('joi');
 const config = require('config');
 const jwt = require('jsonwebtoken');
@@ -32,46 +32,38 @@ const hotelSchema = new mongoose.Schema({
         default: new Date()
     },
     roomsList: Array,
-    availableRoomsList: Array,
     reservedRoomsList: Array
 });
 
 hotelSchema.methods.initialize = function() {
+    const defaultPrice = 0;
     for (let roomID = 1; roomID <= this.rooms; roomID++)
-        this.roomsList.push(new Room({ roomID }));
-
-    this.availableRoomsList = { ...this.roomsList };
+        this.roomsList.push(new Room('Unknown', roomID, defaultPrice));
 }
 
 hotelSchema.methods.reserve = function(roomID, owner) {
+    owner = owner.trim();
     if (roomID < 1 || roomID > this.rooms) return false;
-    
-    const {error} = validate({ owner });
-    if (error) return false;
-    
-    const room = undefined;
-    const roomIndex = NaN;
-    for (let i = 0; i < this.availableRoomsList.length; i++)
-        if (this.availableRoomsList[i].roomID === roomID) {
-            room = this.availableRoomsList[i];
-            roomIndex = i;
-            break;
-        }  
+    if (owner.length < 3 || owner.length > 26) return false;
 
-    if (!room) return false;
+    const room = this.roomsList[roomID - 1];
+    console.log(room);
+    if (room.isReserved) return res.status(400).send('Room is already reserved.');
 
-    this.availableRoomsList.splice(roomIndex, 1);
     room.reserve(owner);
+
     this.reservedRoomsList.push(room);
+    return true;
 }
 
-hotelSchema.methods.findRoom = async function(roomID) {
-    if (roomID < 1 || roomID > this.roomsList) return false;
-    return await this.roomsList.find({ roomID: roomID });
+hotelSchema.methods.findRoom = function(roomID) {
+    roomID = parseInt(roomID);
+    if (roomID < 1 || roomID > this.rooms) return false;
+    return this.roomsList[roomID - 1];
 }
 
 hotelSchema.methods.generateAuthToken = function() { 
-    const token = jwt.sign({ _id: this._id, password: this.password }, config.get('privateKey'));
+    const token = jwt.sign({ _id: this._id }, config.get('privateKey'));
     return token;
 }
 

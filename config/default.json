@@ -1,3 +1,4 @@
 {
+    "privateKey": "",
     "db": "mongodb://localhost/hotels"
 }
