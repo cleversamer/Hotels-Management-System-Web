@@ -47,7 +47,7 @@ hotelSchema.methods.reserve = function(roomID, owner) {
     if (owner.length < 3 || owner.length > 26) return false;
 
     const room = this.roomsList[roomID - 1];
-    room.reserve(owner);
+    reserve(room, owner);
 
     this.reservedRoomsList.push(room);
     return true;

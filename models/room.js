@@ -10,12 +10,12 @@ module.exports = class Room {
 
     reserve(owner) {
         this.owner = owner;
-        this.isReserved = true;
-        this.reservationDate = new Date();
+        this.isReserved = isReserved;
+        this.reservationDate = reservationDate;
     }
 
     checkout() {
-        this.owner = 'Empty';
+        this.owner = 'Unknown';
         this.isReserved = false;
         this.reservationDate = undefined;
     }
