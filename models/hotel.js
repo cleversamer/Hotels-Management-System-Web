@@ -47,9 +47,6 @@ hotelSchema.methods.reserve = function(roomID, owner) {
     if (owner.length < 3 || owner.length > 26) return false;
 
     const room = this.roomsList[roomID - 1];
-    console.log(room);
-    if (room.isReserved) return res.status(400).send('Room is already reserved.');
-
     room.reserve(owner);
 
     this.reservedRoomsList.push(room);
