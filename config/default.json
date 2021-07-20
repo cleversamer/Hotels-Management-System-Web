@@ -1,4 +1,5 @@
 {
     "privateKey": "",
-    "db": "mongodb://localhost/hotels"
+    "db": "mongodb://localhost/hotels",
+    "maxRooms": 100
 }

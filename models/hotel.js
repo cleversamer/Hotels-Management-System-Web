@@ -23,8 +23,15 @@ const hotelSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: 0,
-        max: 100,
+        max: config.get('maxRooms'),
         default: 1
+    },
+    reservedRooms: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: config.get('maxRooms'),
+        default: 0
     },
     dateCreated: {
         type: Date,

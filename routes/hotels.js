@@ -2,6 +2,7 @@ const {Hotel, validate} = require('../models/hotel');
 const Room = require('../models/room');
 const Joi = require('joi');
 const _ = require('lodash');
+const config = require('config');
 const bcrypt = require('bcrypt');
 const auth = require('../middleware/auth');
 const express = require('express');
@@ -123,6 +124,9 @@ router.put('/room/reserve/:roomID/:owner', auth, async (req, res) => {
             },
             $set: {
                 'roomsList.$': room
+            },
+            $inc: {
+                reservedRooms: 1
             }
         });
         
@@ -159,6 +163,9 @@ router.put('/room/checkout/:roomID', auth, async (req, res) => {
             },
             $pull: {
                 reservedRoomsList: { ID: roomID }
+            },
+            $inc: {
+                reservedRooms: -1
             }
         });
 
@@ -179,9 +186,14 @@ router.put('/addRooms/:rooms', auth, async (req, res) => {
         if (!hotel) return res.status(400).send('Something went wrong.');
         
         const rooms = parseInt(req.params.rooms);
-        const roomsToUpdate = [ ...hotel.roomsList ];
-        let roomID = hotel.rooms + 1;
         const totalRooms = hotel.rooms + rooms;
+        let roomID = hotel.rooms + 1;
+
+        const maxRooms = config.get('maxRooms');
+        if (hotel.rooms + parseInt(req.params.rooms) > maxRooms)
+            return res.status(400).send('Number of rooms is not allowed.');
+
+        const roomsToUpdate = [ ...hotel.roomsList ];
         hotel.rooms += rooms;
 
         for ( ; roomID <= totalRooms; roomID++) roomsToUpdate.push(new Room('Unknown', roomID, 0));
@@ -205,15 +217,15 @@ router.put('/removeRooms/:rooms', auth, async (req, res) => {
         if (!hotel) return res.status(400).send('Something went wrong.');
         
         const newRooms = hotel.rooms - parseInt(req.params.rooms);
-        if (newRooms < 0) return res.status(400).send('The given number of rooms is higher than existing rooms.');
+        if (newRooms <= 0) return res.status(400).send('Operation is not allowed.');
 
         const roomsToUpdate = [ ...hotel.roomsList ];
         roomsToUpdate.length = newRooms;
         hotel.rooms = newRooms;
 
         await Hotel.updateOne({ _id: req.hotel._id }, { $set: { roomsList: roomsToUpdate } });
-
-        await Hotel.updateOne({ _id: req.hotel._id }, { $pull: { reservedRoomsList: { ID: { $gt: newRooms } } } }, { multi: true });
+        
+        await Hotel.updateOne({ _id: req.hotel._id }, { $pull: { reservedRoomsList: { ID: { $gt: newRooms } } }, $inc: { reservedRooms: -1 } }, { multi: true });
 
         hotel = await hotel.save();
 
