@@ -9,24 +9,29 @@ const express = require('express');
 const router = express.Router();
 
 // My Hotel
-router.get('/me', auth, async (req, res) => {
-    const hotel = await Hotel.findById(req.hotel._id);
-    res.send(_.pick(hotel, ['name', 'rooms', 'dateCreated']));
+router.get('/me', auth, (req, res) => {
+    const hotel = req.hotel;
+    res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
 });
 
 // GET hotel
 router.get('/:name', async (req, res) => {
     try {
+        const name = req.params.name.trim();
+        if (name.length < 3 || name.length > 55)
+            return res.status(404).send('Hotel not found.');
+
         const hotel = await Hotel.findOne({ name: req.params.name });
-        if (!hotel) return res.status(404).send('Hotel with the given name was not exist.');
-        res.send(_.pick(hotel, ['name', 'rooms', 'dateCreated']));
+        if (!hotel) return res.status(404).send('Hotel not found.');
+
+        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
     }
     catch (ex) {
-        res.send('Something went wrong.');
+        res.status(500).send('Something went wrong.');
     }
 });
 
-// Create hotel
+// Create Hotel
 router.post('/', async (req, res) => {
     try {
         const {error} = validate(req.body);
@@ -42,21 +47,19 @@ router.post('/', async (req, res) => {
         hotel = await hotel.save();
 
         const token = hotel.generateAuthToken();
-        res.header('x-auth-token', token).send(_.pick(hotel, ['name', 'rooms', 'dateCreated']));
+        res.header('x-auth-token', token).send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
     }
     catch (ex) {
-        console.log(ex);
-        res.send('Something went wrong.');
+        res.status(500).send('Something went wrong.');
     }
 });
 
-// Update hotel info
+// Update Hotel's info
 router.put('/update', auth, async (req, res) => {
     try {
         if (!req.body) return res.status(400).send('Invalid info.');
 
-        let hotel = await Hotel.findById(req.hotel._id);    
-        if (!hotel) return res.status(400).send('Hotel with the given name was not exist.');
+        let hotel = req.hotel;
 
         const {error} = validateRequest(req.body);
         if (error) return res.status(400).send('Invalid info.');
@@ -69,11 +72,10 @@ router.put('/update', auth, async (req, res) => {
     
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'dateCreated']));
+        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
     }
     catch (ex) {
-        console.log(ex.message);
-        res.send('Something went wrong.');
+        res.status(500).send('Something went wrong.');
     }
 });
 
@@ -85,29 +87,30 @@ function validateRequest(req) {
     return Joi.validate(req, schema);
 }
 
-// GET room by ID
-router.get('/room/:roomID', auth, async (req, res) => {
+// GET Room by ID
+router.get('/room/:roomID', auth, (req, res) => {
     try {
-        const hotel = await Hotel.findById(req.hotel._id);    
-        if (!hotel) return res.status(400).send('Hotel with the given name was not exist.');
-    
+        const hotel = req.hotel;
+
         const room = hotel.findRoom(req.params.roomID);
         if (!room) res.status(400).send('Room with the given ID was not found.');
-    
+        
         res.send(room);
     }
     catch (ex) {
-        res.send('Something went wrong.');
+        res.status(500).send('Something went wrong.');
     }
 });
 
-// Reserve room
+// Reserve Room
 router.put('/room/reserve/:roomID/:owner', auth, async (req, res) => {
     try {
-        let hotel = await Hotel.findById(req.hotel._id);
-        if (!hotel) return res.status(400).send('Something went wrong.');
+        let hotel = req.hotel;
 
         const roomID = parseInt(req.params.roomID); 
+        if (roomID < 1 || roomID > hotel.rooms) 
+            return res.status(400).send('Room with the given ID was not found.');
+
         const index = roomID - 1;
         const room = hotel.roomsList[index];
 
@@ -120,7 +123,10 @@ router.put('/room/reserve/:roomID/:owner', auth, async (req, res) => {
         await Hotel.updateOne({ 'roomsList.ID': roomID }, 
         {
             $push: {
-                reservedRoomsList: room
+                reservedRoomsList: {
+                    $each: [ room ],
+                    $sort: { ID: 1 }
+                }
             },
             $set: {
                 'roomsList.$': room
@@ -132,21 +138,22 @@ router.put('/room/reserve/:roomID/:owner', auth, async (req, res) => {
         
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'dateCreated']));
+        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
     }
     catch (ex) {
-        console.log(ex.message);
-        res.send('Something went wrong.');
+        res.status(500).send('Something went wrong.');
     }
 });
 
-// Checkout room
+// Checkout Room
 router.put('/room/checkout/:roomID', auth, async (req, res) => {
     try {
-        let hotel = await Hotel.findById(req.hotel._id);
-        if (!hotel) return res.status(400).send('Something went wrong.');
+        let hotel = req.hotel;
 
         const roomID = parseInt(req.params.roomID); 
+        if (roomID < 1 || roomID > hotel.rooms) 
+            return res.status(400).send('Room with the given ID was not found.');
+
         const index = roomID - 1;
         const room = hotel.roomsList[index];
 
@@ -171,19 +178,17 @@ router.put('/room/checkout/:roomID', auth, async (req, res) => {
 
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'dateCreated']));
+        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
     }
     catch (ex) {
-        console.log(ex.message);
-        res.send('Something went wrong.');
+        res.status(500).send('Something went wrong.');
     }
 });
 
-// Add rooms to hotel
+// Add Rooms to Hotel
 router.put('/addRooms/:rooms', auth, async (req, res) => {
     try {
-        let hotel = await Hotel.findById(req.hotel._id);
-        if (!hotel) return res.status(400).send('Something went wrong.');
+        let hotel = req.hotel;
         
         const rooms = parseInt(req.params.rooms);
         const totalRooms = hotel.rooms + rooms;
@@ -202,19 +207,17 @@ router.put('/addRooms/:rooms', auth, async (req, res) => {
 
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'dateCreated']));
+        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
     }
     catch (ex) {
-        console.log(ex.message);
-        res.send('Something went wrong.');
+        res.status(500).send('Something went wrong.');
     }
 });
 
-// Remove rooms from hotel
+// Remove Rooms from Hotel
 router.put('/removeRooms/:rooms', auth, async (req, res) => {
     try {
-        let hotel = await Hotel.findById(req.hotel._id);
-        if (!hotel) return res.status(400).send('Something went wrong.');
+        let hotel = req.hotel;
         
         const newRooms = hotel.rooms - parseInt(req.params.rooms);
         if (newRooms <= 0) return res.status(400).send('Operation is not allowed.');
@@ -223,17 +226,30 @@ router.put('/removeRooms/:rooms', auth, async (req, res) => {
         roomsToUpdate.length = newRooms;
         hotel.rooms = newRooms;
 
-        await Hotel.updateOne({ _id: req.hotel._id }, { $set: { roomsList: roomsToUpdate } });
-        
-        await Hotel.updateOne({ _id: req.hotel._id }, { $pull: { reservedRoomsList: { ID: { $gt: newRooms } } }, $inc: { reservedRooms: -1 } }, { multi: true });
+        let roomsToRemove = 0;
+        for (let i = hotel.reservedRoomsList.length - 1; i >= 0; i--)
+            if (hotel.reservedRoomsList[i].ID > newRooms)
+                --roomsToRemove;
 
+        await Hotel.updateOne({ _id: req.hotel._id }, 
+            { 
+                $set: { 
+                    roomsList: roomsToUpdate
+                },
+                $inc: {
+                    reservedRooms: roomsToRemove
+                },
+                $pull: { 
+                    reservedRoomsList: { ID: { $gt: newRooms } } 
+                }
+            }, { multi: true });
+        
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'dateCreated']));
+        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
     }
     catch (ex) {
-        console.log(ex.message);
-        res.send('Something went wrong.');
+        res.status(500).send('Something went wrong.');
     }
 });
 
