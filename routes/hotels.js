@@ -8,13 +8,15 @@ const auth = require('../middleware/auth');
 const express = require('express');
 const router = express.Router();
 
+const hotelData = config.get('hotelData');
+
 // My Hotel
 router.get('/me', auth, (req, res) => {
     const hotel = req.hotel;
-    res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
+    res.send(_.pick(hotel, hotelData));
 });
 
-/ GET hotel
+// GET hotel
 router.get('/:name', async (req, res) => {
     try {
         const name = req.params.name.trim();
@@ -24,7 +26,7 @@ router.get('/:name', async (req, res) => {
         const hotel = await Hotel.findOne({ name });
         if (!hotel) return res.status(404).send('Hotel not found.');
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
+        res.send(_.pick(hotel, hotelData));
     }
     catch (ex) {
         res.status(500).send('Something went wrong.');
@@ -47,7 +49,7 @@ router.post('/', async (req, res) => {
         hotel = await hotel.save();
 
         const token = hotel.generateAuthToken();
-        res.header('x-auth-token', token).send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
+        res.header('x-auth-token', token).send(_.pick(hotel, hotelData));
     }
     catch (ex) {
         res.status(500).send('Something went wrong.');
@@ -72,7 +74,7 @@ router.put('/update', auth, async (req, res) => {
     
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
+        res.send(_.pick(hotel, hotelData));
     }
     catch (ex) {
         res.status(500).send('Something went wrong.');
@@ -138,7 +140,7 @@ router.put('/room/reserve/:roomID/:owner', auth, async (req, res) => {
         
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
+        res.send(_.pick(hotel, hotelData));
     }
     catch (ex) {
         res.status(500).send('Something went wrong.');
@@ -178,7 +180,7 @@ router.put('/room/checkout/:roomID', auth, async (req, res) => {
 
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
+        res.send(_.pick(hotel, hotelData));
     }
     catch (ex) {
         res.status(500).send('Something went wrong.');
@@ -207,7 +209,7 @@ router.put('/addRooms/:rooms', auth, async (req, res) => {
 
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
+        res.send(_.pick(hotel, hotelData));
     }
     catch (ex) {
         res.status(500).send('Something went wrong.');
@@ -248,9 +250,10 @@ router.put('/removeRooms/:rooms', auth, async (req, res) => {
         
         hotel = await hotel.save();
 
-        res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
+        res.send(_.pick(hotel, hotelData));
     }
     catch (ex) {
+        console.log(ex.message);
         res.status(500).send('Something went wrong.');
     }
 });
