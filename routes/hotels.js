@@ -14,14 +14,14 @@ router.get('/me', auth, (req, res) => {
     res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
 });
 
-// GET hotel
+/ GET hotel
 router.get('/:name', async (req, res) => {
     try {
         const name = req.params.name.trim();
         if (name.length < 3 || name.length > 55)
             return res.status(404).send('Hotel not found.');
 
-        const hotel = await Hotel.findOne({ name: req.params.name });
+        const hotel = await Hotel.findOne({ name });
         if (!hotel) return res.status(404).send('Hotel not found.');
 
         res.send(_.pick(hotel, ['name', 'rooms', 'reservedRooms', 'dateCreated']));
