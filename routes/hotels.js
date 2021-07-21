@@ -227,9 +227,11 @@ router.put('/removeRooms/:rooms', auth, async (req, res) => {
         hotel.rooms = newRooms;
 
         let roomsToRemove = 0;
-        for (let i = hotel.reservedRoomsList.length - 1; i >= 0; i--)
-            if (hotel.reservedRoomsList[i].ID > newRooms)
-                --roomsToRemove;
+        for (let i = hotel.reservedRoomsList.length - 1; i >= 0; i--) {
+            if (hotel.reservedRoomsList[i].ID <= newRooms)
+                break;
+           --roomsToRemove;
+        }
 
         await Hotel.updateOne({ _id: req.hotel._id }, 
             { 
