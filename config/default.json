@@ -1,5 +1,11 @@
 {
     "privateKey": "",
     "db": "mongodb://localhost/hotels",
-    "maxRooms": 100
+    "maxRooms": 100,
+    "hotelData": [
+        "name",
+        "rooms",
+        "reservedRooms",
+        "dateCreated"
+    ]
 }
